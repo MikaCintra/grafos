@@ -38,7 +38,8 @@ public class GraphGUI extends JFrame {
     
     public GraphGUI() {
         setTitle("Analisador de Grafos - Dijkstra, Kruskal e Prim");
-        setSize(1000, 700);
+        setSize(1500, 700);
+        setResizable(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         
