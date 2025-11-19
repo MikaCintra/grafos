@@ -50,6 +50,8 @@ AGM = Árvore Geradora Mínima (algoritmos de Kruskal e Prim)
 - 📊 Tabela de resultados formatada
 - 📝 Log em tempo real
 - 💾 Exportação CSV integrada
+- 🔍 **Visualização de grafos** (até 1.000 vértices)
+- 📊 **Gráficos comparativos** (tempos e tamanhos)
 
 ### Opções Avançadas
 
@@ -72,6 +74,15 @@ java -cp bin app.Main --quiet --source 10 --csv custom.csv
 - ✅ Tabela de resultados com scroll
 - ✅ Log visual com emojis (📖 ⚡ 🌲 ✓)
 - ✅ Exportação CSV integrada
+- ✅ **Visualização gráfica de grafos** (layout circular/grade)
+  - Vértices coloridos por alcance (origem, alcançável, isolado)
+  - Limite de 1.000 vértices para performance
+  - Clique em linha da tabela para visualizar
+- ✅ **Gráficos comparativos interativos**
+  - 📊 Comparação de tempos (Dijkstra, Kruskal, Prim)
+  - 📏 Comparação de tamanhos (Vértices vs Arcos)
+  - Alternância entre visualizações com botões
+  - Legendas coloridas e escala automática
 
 ### Linha de Comando Avançada
 - ✅ `--quiet` / `--verbose` – Controle de verbosidade

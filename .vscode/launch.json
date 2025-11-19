@@ -7,6 +7,13 @@
       "name": "Main",
       "request": "launch",
       "mainClass": "app.Main",
+      "projectName": "Grafos_230f4b3f"
+    },
+    {
+      "type": "java",
+      "name": "Main",
+      "request": "launch",
+      "mainClass": "app.Main",
       "projectName": "Grafos_708487d2"
     },
     {

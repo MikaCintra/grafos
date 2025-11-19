@@ -119,7 +119,7 @@ public class Main {
             System.out.println("AGM = Árvore Geradora Mínima (algoritmos de Kruskal e Prim)");
             System.out.println();
 
-            NumberFormat nfInt = NumberFormat.getIntegerInstance(new Locale("pt", "BR"));
+            NumberFormat nfInt = NumberFormat.getIntegerInstance(Locale.of("pt", "BR"));
             DecimalFormat dfTime = new DecimalFormat("0.0000");
 
             System.out.printf("%10s %10s %15s %10s %15s %10s %15s %10s %10s%n",

@@ -15,8 +15,10 @@ import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class GraphGUI extends JFrame {
     
@@ -28,18 +30,34 @@ public class GraphGUI extends JFrame {
     private JButton btnRun;
     private JButton btnExportCSV;
     private JSpinner sourceSpinner;
-    private List<File> selectedFiles = new ArrayList<>();
+    private final List<File> selectedFiles = new ArrayList<>();
     private JLabel lblCm;
     private JLabel lblK;
     private JLabel lblP;
+    private GraphPanel graphPanel;
+    private ComparisonChartPanel chartPanel;
+    private final Map<String, GraphData> processedGraphs = new HashMap<>();
     
-    private NumberFormat nfInt = NumberFormat.getIntegerInstance(new Locale("pt", "BR"));
-    private DecimalFormat dfTime = new DecimalFormat("0.0000");
+    // Classe interna para armazenar dados do grafo
+    private static class GraphData {
+        Graph graph;
+        long[] distances;
+        int sourceVertex;
+        
+        GraphData(Graph g, long[] dist, int source) {
+            this.graph = g;
+            this.distances = dist;
+            this.sourceVertex = source;
+        }
+    }
+    
+    private final NumberFormat nfInt = NumberFormat.getIntegerInstance(Locale.of("pt", "BR"));
+    private final DecimalFormat dfTime = new DecimalFormat("0.0000");
     
     public GraphGUI() {
         setTitle("Analisador de Grafos - Dijkstra, Kruskal e Prim");
         setSize(1500, 700);
-        setResizable(false);
+        setResizable(true);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         
@@ -102,6 +120,18 @@ public class GraphGUI extends JFrame {
         resultTable.setFont(new Font("Monospaced", Font.PLAIN, 12));
         resultTable.getTableHeader().setFont(new Font("Monospaced", Font.BOLD, 12));
         resultTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        resultTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        
+        // Adicionar listener para seleção de linha
+        resultTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                int selectedRow = resultTable.getSelectedRow();
+                if (selectedRow >= 0) {
+                    visualizeGraph(selectedRow);
+                }
+            }
+        });
+        
         // Larguras preferidas das colunas (permitindo scroll horizontal)
         int[] widths = {260, 80, 80, 140, 80, 140, 80, 140, 80, 100};
         for (int i = 0; i < widths.length; i++) {
@@ -111,7 +141,52 @@ public class GraphGUI extends JFrame {
         JScrollPane tableScroll = new JScrollPane(resultTable);
         tableScroll.setBorder(BorderFactory.createTitledBorder("Resultados"));
         
-        add(tableScroll, BorderLayout.CENTER);
+        // Painel de visualização do grafo
+        graphPanel = new GraphPanel();
+        JScrollPane graphScroll = new JScrollPane(graphPanel);
+        graphScroll.setBorder(BorderFactory.createTitledBorder("Visualização do Grafo"));
+        
+        // Painel de gráficos comparativos
+        chartPanel = new ComparisonChartPanel();
+        
+        // Criar painel com botões para alternar tipo de gráfico
+        JPanel chartContainerPanel = new JPanel(new BorderLayout());
+        JPanel chartButtonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton btnTimeChart = new JButton("⏱️ Tempos");
+        JButton btnSizeChart = new JButton("📊 Tamanhos");
+        
+        btnTimeChart.addActionListener(e -> {
+            chartPanel.setChartType("time");
+            btnTimeChart.setEnabled(false);
+            btnSizeChart.setEnabled(true);
+        });
+        
+        btnSizeChart.addActionListener(e -> {
+            chartPanel.setChartType("size");
+            btnTimeChart.setEnabled(true);
+            btnSizeChart.setEnabled(false);
+        });
+        
+        btnTimeChart.setEnabled(false); // Começa com gráfico de tempo selecionado
+        
+        chartButtonPanel.add(new JLabel("Tipo de gráfico:"));
+        chartButtonPanel.add(btnTimeChart);
+        chartButtonPanel.add(btnSizeChart);
+        
+        chartContainerPanel.add(chartButtonPanel, BorderLayout.NORTH);
+        chartContainerPanel.add(chartPanel, BorderLayout.CENTER);
+        
+        // Criar abas para visualização
+        JTabbedPane visualizationTabs = new JTabbedPane();
+        visualizationTabs.addTab("🔍 Visualização do Grafo", graphScroll);
+        visualizationTabs.addTab("📊 Gráficos Comparativos", chartContainerPanel);
+        
+        // Dividir a área central entre tabela e visualizações
+        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tableScroll, visualizationTabs);
+        centerSplit.setDividerLocation(850);
+        centerSplit.setResizeWeight(0.6);
+        
+        add(centerSplit, BorderLayout.CENTER);
         
         // Painel inferior - log e progresso
         JPanel bottomPanel = new JPanel(new BorderLayout(5, 5));
@@ -173,6 +248,9 @@ public class GraphGUI extends JFrame {
     
     private void runAnalysis() {
         tableModel.setRowCount(0); // Limpar resultados anteriores
+        processedGraphs.clear(); // Limpar grafos anteriores
+        graphPanel.clearGraph(); // Limpar visualização
+        chartPanel.clearData(); // Limpar gráficos comparativos
         btnRun.setEnabled(false);
         btnAddFiles.setEnabled(false);
         btnExportCSV.setEnabled(false);
@@ -249,8 +327,15 @@ public class GraphGUI extends JFrame {
                         final double finalTempoP = tempoP;
                         final int finalReach = reach;
                         final String fileName = f.getName();
+                        final Graph finalGraph = g;
+                        final long[] finalDist = dist;
+                        final int finalSource = sourceVertex;
                         
                         SwingUtilities.invokeLater(() -> {
+                            // Armazenar grafo para visualização na thread da UI
+                            processedGraphs.put(fileName, new GraphData(finalGraph, finalDist, finalSource));
+                            System.out.println("[GraphGUI] Grafo armazenado: " + fileName + ", n=" + finalGraph.n);
+                            
                             tableModel.addRow(new Object[]{
                                 fileName,
                                 nfInt.format(finalN),
@@ -263,6 +348,9 @@ public class GraphGUI extends JFrame {
                                 dfTime.format(finalTempoP),
                                 nfInt.format(finalReach)
                             });
+                            
+                            // Atualizar gráficos comparativos
+                            updateComparisonCharts();
                         });
                         
                     } catch (Exception ex) {
@@ -312,6 +400,60 @@ public class GraphGUI extends JFrame {
                 JOptionPane.showMessageDialog(this, "Erro ao exportar: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+    
+    private void visualizeGraph(int row) {
+        if (row < 0 || row >= tableModel.getRowCount()) return;
+        
+        String fileName = (String) tableModel.getValueAt(row, 0);
+        System.out.println("[GraphGUI] visualizeGraph: row=" + row + ", fileName=" + fileName);
+        System.out.println("[GraphGUI] processedGraphs size: " + processedGraphs.size());
+        GraphData data = processedGraphs.get(fileName);
+        
+        if (data != null) {
+            System.out.println("[GraphGUI] Encontrado grafo com n=" + data.graph.n);
+            
+            // Limitar visualização para grafos com até 1000 vértices
+            if (data.graph.n > 1000) {
+                graphPanel.showMessage(
+                    "⚠️ Grafo muito grande para visualização",
+                    "O grafo possui " + nfInt.format(data.graph.n) + " vértices.",
+                    "Visualização disponível apenas para grafos com até 1.000 vértices."
+                );
+                log("⚠️ Grafo muito grande (" + data.graph.n + " vértices). Visualização limitada a 1000 vértices.");
+            } else {
+                graphPanel.setGraph(data.graph, data.distances, data.sourceVertex);
+                log("🔍 Visualizando: " + fileName + " (" + data.graph.n + " vértices)");
+            }
+        } else {
+            System.out.println("[GraphGUI] Grafo não encontrado. Chaves disponíveis: " + processedGraphs.keySet());
+            log("⚠️ Grafo não encontrado para visualização: " + fileName);
+        }
+    }
+    
+    private void updateComparisonCharts() {
+        List<ComparisonChartPanel.ChartData> chartDataList = new ArrayList<>();
+        
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            String fileName = (String) tableModel.getValueAt(i, 0);
+            String vStr = ((String) tableModel.getValueAt(i, 1)).replace(".", "");
+            String aStr = ((String) tableModel.getValueAt(i, 2)).replace(".", "");
+            String dTimeStr = ((String) tableModel.getValueAt(i, 4)).replace(",", ".");
+            String kTimeStr = ((String) tableModel.getValueAt(i, 6)).replace(",", ".");
+            String pTimeStr = ((String) tableModel.getValueAt(i, 8)).replace(",", ".");
+            
+            int vertices = Integer.parseInt(vStr);
+            int arcs = Integer.parseInt(aStr);
+            double dijkstraTime = Double.parseDouble(dTimeStr);
+            double kruskalTime = Double.parseDouble(kTimeStr);
+            double primTime = Double.parseDouble(pTimeStr);
+            
+            chartDataList.add(new ComparisonChartPanel.ChartData(
+                fileName, vertices, arcs, dijkstraTime, kruskalTime, primTime
+            ));
+        }
+        
+        chartPanel.updateData(chartDataList);
     }
     
     private void log(String message) {
